@@ -58,7 +58,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // die(var_dump($response));
 
-    // if ($result && isset($result['status']) && $result['status'] == "success") {
+     if ($result && isset($result['status']) && $result['status'] == "success") {
         // Save payment
         $payment_date = date("Y-m-d H:i:s");
         $payment_status = "Completed";
