@@ -54,13 +54,12 @@ $totalAmount = mysqli_fetch_assoc(
     mysqli_query($conn, "SELECT SUM(amount) as total FROM payments WHERE client_id = '$user_id'")
 )['total'] ?? 0;
 
-// Fetch receipts
+// Fetch receipts (one row per token; do not join payments on client_id only — that duplicates rows)
 $receiptHTML = "";
-$sql = "SELECT t.token_id, t.token_value, t.units, t.issue_date, p.amount 
-        FROM tokens t
-        JOIN payments p ON p.client_id = t.client_id
-        WHERE t.client_id = ? 
-        ORDER BY t.issue_date DESC";
+$sql = "SELECT token_id, issue_date
+        FROM tokens
+        WHERE client_id = ?
+        ORDER BY issue_date DESC";
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $client_id);

@@ -13,10 +13,17 @@ if (!isset($_GET['token_id'])) {
 }
 
 $token_id = intval($_GET['token_id']);
-$sql = "SELECT t.token_id, t.token_value, t.units, t.issue_date, t.expiry_date, p.amount, p.payment_date, c.name, c.meter_no, c.address
+$sql = "SELECT t.token_id, t.token_value, t.units, t.issue_date, t.expiry_date, t.status AS token_status,
+               p.amount, p.payment_date, p.payment_status,
+               c.name, c.meter_no, c.address
         FROM tokens t
-        JOIN payments p ON p.client_id = t.client_id
         JOIN client_information c ON c.client_id = t.client_id
+        LEFT JOIN payments p ON p.payment_id = (
+            SELECT payment_id FROM payments
+            WHERE client_id = t.client_id
+            ORDER BY ABS(TIMESTAMPDIFF(SECOND, payment_date, t.issue_date))
+            LIMIT 1
+        )
         WHERE t.token_id = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $token_id);
@@ -30,221 +37,424 @@ if ($result->num_rows == 0) {
 
 $row = $result->fetch_assoc();
 $stmt->close();
+
+$receiptNo = 'RCPT-' . str_pad($row['token_id'], 6, '0', STR_PAD_LEFT);
+$paymentStatus = htmlspecialchars($row['payment_status'] ?? 'Completed');
+$tokenStatus = htmlspecialchars($row['token_status'] ?? 'active');
+$statusClass = strtolower($tokenStatus) === 'active' ? 'status-active' : 'status-inactive';
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>AquaPay Receipt</title>
-    <!--Favicon-->
+    <title>AquaPay Receipt — <?php echo htmlspecialchars($receiptNo); ?></title>
     <link rel="icon" type="image/png" href="../images/icon.png">
-    <!-- FontAwesome for icons -->
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
-    <!-- FontAwesome for icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css">
 
     <style>
+        :root {
+            --aqua-deep: #0077b6;
+            --aqua-primary: #00b4d8;
+            --aqua-pale: #caf0f8;
+            --text-dark: #0d1b2a;
+            --text-mid: #495057;
+            --border: #d6eaf5;
+            --card-shadow: 0 12px 40px rgba(0, 119, 182, 0.14);
+        }
+
+        * { box-sizing: border-box; }
+
         body {
-            background: #eaf6fb;
-            position: relative;
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'DM Sans', system-ui, sans-serif;
+            background:
+                radial-gradient(ellipse at 20% 0%, rgba(0, 180, 216, 0.2), transparent 50%),
+                radial-gradient(ellipse at 100% 100%, rgba(0, 119, 182, 0.15), transparent 45%),
+                #eef7fc;
+            color: var(--text-dark);
+            padding: 32px 16px 48px;
         }
+
+        .receipt-shell {
+            max-width: 520px;
+            margin: 0 auto;
+        }
+
         .receipt-container {
-            max-width: 550px;
-            min-height: 700px;
-            margin: 40px auto;
             background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 4px 24px rgba(0,123,255,0.12);
-            padding: 32px 24px 24px 24px;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            position: relative;
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
             overflow: hidden;
+            position: relative;
+            border: 1px solid var(--border);
         }
+
+        .receipt-accent {
+            height: 6px;
+            background: linear-gradient(90deg, var(--aqua-deep), var(--aqua-primary), #90e0ef);
+        }
+
+        .receipt-body {
+            padding: 28px 28px 24px;
+            position: relative;
+            z-index: 1;
+        }
+
         .watermark {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-20deg);
-            font-size: 60px;
-            color: #e3f2fd;
-            font-weight: bold;
-            opacity: 0.25;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 72px;
+            font-weight: 700;
+            color: var(--aqua-pale);
+            opacity: 0.35;
+            transform: rotate(-18deg);
             pointer-events: none;
-            z-index: 0;
             user-select: none;
+            z-index: 0;
         }
-        .receipt-header {
+
+        .receipt-top {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 18px;
-            position: relative;
-            z-index: 1;
+            gap: 16px;
+            margin-bottom: 22px;
         }
-        .logo-section {
-            text-align: center;
-            flex: 0 0 110px;
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
+
         .receipt-logo {
-            width: 70px;
-            margin-bottom: 8px;
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 119, 182, 0.2);
         }
-        .company-name {
-            font-size: 1.5em;
+
+        .brand h1 {
+            margin: 0;
+            font-size: 1.35rem;
             font-weight: 700;
-            color: #007bff;
-            margin-bottom: 0;
+            color: var(--aqua-deep);
+            letter-spacing: -0.02em;
         }
-        .company-details {
+
+        .brand p {
+            margin: 2px 0 0;
+            font-size: 0.8rem;
+            color: var(--text-mid);
+        }
+
+        .receipt-badge {
             text-align: right;
-            font-size: 0.98em;
-            color: #444;
-            flex: 1;
-            margin-left: 16px;
         }
-        .company-details p {
-            margin: 2px 0;
+
+        .receipt-badge .label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-mid);
+            margin-bottom: 4px;
         }
-        .receipt-info {
-            background: #f1f8ff;
-            border-radius: 8px;
-            padding: 16px 12px;
-            margin-bottom: 18px;
-            box-shadow: 0 1px 4px rgba(0,123,255,0.07);
-            z-index: 1;
-            position: relative;
+
+        .receipt-badge .number {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--aqua-deep);
         }
-        .receipt-info p {
-            margin: 6px 0;
-            font-size: 1.05em;
+
+        .status-pill {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
-        .receipt-table {
+
+        .status-active {
+            background: rgba(40, 167, 69, 0.12);
+            color: #1e7e34;
+        }
+
+        .status-inactive {
+            background: rgba(220, 53, 69, 0.1);
+            color: #c82333;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 20px;
+            margin-bottom: 22px;
+            padding: 16px;
+            background: linear-gradient(135deg, #f8fcff 0%, #f0f9ff 100%);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .meta-item .meta-label {
+            display: block;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-mid);
+            margin-bottom: 4px;
+        }
+
+        .meta-item .meta-value {
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            word-break: break-word;
+        }
+
+        .meta-item.full { grid-column: 1 / -1; }
+
+        .token-box {
+            background: var(--text-dark);
+            color: #fff;
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .token-box .token-label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            opacity: 0.75;
+            margin-bottom: 10px;
+        }
+
+        .token-box .token-value {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 1.15rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            word-break: break-all;
+            line-height: 1.5;
+        }
+
+        .summary-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 22px;
-            background: #fff;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 1px 4px rgba(0,123,255,0.07);
-            z-index: 1;
-            position: relative;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
         }
-        .receipt-table th, .receipt-table td {
-            border: 1px solid #e3f2fd;
-            padding: 10px 8px;
-            text-align: center;
+
+        .summary-table tr {
+            border-bottom: 1px solid var(--border);
         }
-        .receipt-table th {
-            background: #007bff;
-            color: #fff;
-            font-weight: 600;
+
+        .summary-table tr:last-child {
+            border-bottom: none;
+            font-weight: 700;
+            background: rgba(0, 180, 216, 0.06);
         }
-        .receipt-table td {
-            background: #f9fbfd;
+
+        .summary-table td {
+            padding: 12px 8px;
         }
-        .receipt-actions {
+
+        .summary-table td:first-child {
+            color: var(--text-mid);
+        }
+
+        .summary-table td:last-child {
             text-align: right;
-            margin-top: 18px;
-            z-index: 1;
-            position: relative;
+            font-weight: 600;
+            color: var(--text-dark);
         }
-        .btn {
-            padding: 8px 18px;
-            margin: 5px;
+
+        .receipt-footer {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px dashed var(--border);
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-mid);
+            line-height: 1.5;
+        }
+
+        .receipt-footer strong {
+            color: var(--aqua-deep);
+        }
+
+        .receipt-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+        .btn-receipt {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
             border: none;
-            border-radius: 4px;
-            background: #007bff;
-            color: #fff;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
             cursor: pointer;
-            font-weight: 500;
-            transition: background 0.2s;
+            transition: transform 0.15s, box-shadow 0.15s;
         }
-        .btn.download {
-            background: #28a745;
+
+        .btn-receipt:hover {
+            transform: translateY(-1px);
         }
-        .btn:hover {
-            background: #0056b3;
+
+        .btn-print {
+            background: linear-gradient(135deg, var(--aqua-deep), var(--aqua-primary));
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(0, 119, 182, 0.35);
         }
-        .btn.download:hover {
-            background: #218838;
+
+        .btn-back {
+            background: #fff;
+            color: var(--aqua-deep);
+            border: 1.5px solid var(--border);
         }
+
+        .btn-back:hover {
+            background: #f8fcff;
+        }
+
+        .zigzag {
+            height: 12px;
+            background:
+                linear-gradient(135deg, #fff 25%, transparent 25%) -8px 0,
+                linear-gradient(225deg, #fff 25%, transparent 25%) -8px 0,
+                linear-gradient(315deg, #fff 25%, transparent 25%),
+                linear-gradient(45deg, #fff 25%, transparent 25%);
+            background-size: 16px 12px;
+            background-color: #eef7fc;
+        }
+
         @media print {
             body {
-                background: #fff !important;
+                background: #fff;
+                padding: 0;
             }
+            .receipt-shell { max-width: 100%; }
             .receipt-container {
-                box-shadow: none !important;
-                border: none !important;
+                box-shadow: none;
+                border: none;
             }
-            .receipt-actions { display: none; }
-            .watermark { opacity: 0.12; }
+            .receipt-actions, .btn-back { display: none !important; }
+            .watermark { opacity: 0.15; }
+        }
+
+        @media (max-width: 480px) {
+            .receipt-body { padding: 20px 18px; }
+            .meta-grid { grid-template-columns: 1fr; }
+            .receipt-top { flex-direction: column; }
+            .receipt-badge { text-align: left; }
         }
     </style>
 </head>
 <body>
-    <div class="receipt-container" id="receipt-content">
-        <div class="watermark">AquaPay</div>
-        <div class="receipt-header">
-            <div class="logo-section">
-                <img src="../images/icon.png" alt="AquaPay Logo" class="receipt-logo">
-                <div class="company-name">AquaPay</div>
+    <div class="receipt-shell">
+        <div class="receipt-container" id="receipt-content">
+            <div class="receipt-accent"></div>
+            <div class="receipt-body">
+                <div class="watermark" aria-hidden="true">AquaPay</div>
+
+                <div class="receipt-top">
+                    <div class="brand">
+                        <img src="../images/icon.png" alt="AquaPay" class="receipt-logo">
+                        <div>
+                            <h1>AquaPay</h1>
+                            <p>Water billing · Gulu City</p>
+                        </div>
+                    </div>
+                    <div class="receipt-badge">
+                        <div class="label">Receipt</div>
+                        <div class="number"><?php echo htmlspecialchars($receiptNo); ?></div>
+                        <span class="status-pill <?php echo $statusClass; ?>"><?php echo $tokenStatus; ?></span>
+                    </div>
+                </div>
+
+                <div class="meta-grid">
+                    <div class="meta-item">
+                        <span class="meta-label">Client</span>
+                        <span class="meta-value"><?php echo htmlspecialchars($row['name']); ?></span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Meter no.</span>
+                        <span class="meta-value"><?php echo htmlspecialchars($row['meter_no']); ?></span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Payment date</span>
+                        <span class="meta-value"><?php echo htmlspecialchars($row['payment_date'] ?? $row['issue_date']); ?></span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Payment status</span>
+                        <span class="meta-value"><?php echo $paymentStatus; ?></span>
+                    </div>
+                    <div class="meta-item full">
+                        <span class="meta-label">Address</span>
+                        <span class="meta-value"><?php echo htmlspecialchars($row['address']); ?></span>
+                    </div>
+                </div>
+
+                <div class="token-box">
+                    <div class="token-label">Your water token</div>
+                    <div class="token-value"><?php echo htmlspecialchars($row['token_value']); ?></div>
+                </div>
+
+                <table class="summary-table">
+                    <tr>
+                        <td>Amount paid</td>
+                        <td>UGX <?php echo number_format((float)($row['amount'] ?? 0)); ?></td>
+                    </tr>
+                    <tr>
+                        <td>Units credited</td>
+                        <td><?php echo number_format((float)($row['units'] ?? 0), 2, '.', ''); ?></td>
+                    </tr>
+                    <tr>
+                        <td>Token issued</td>
+                        <td><?php echo htmlspecialchars($row['issue_date']); ?></td>
+                    </tr>
+                    <tr>
+                        <td>Valid until</td>
+                        <td><?php echo htmlspecialchars($row['expiry_date']); ?></td>
+                    </tr>
+                </table>
+
+                <div class="receipt-footer">
+                    <p>Thank you for using <strong>AquaPay</strong>.</p>
+                    <p>support@aquapay.com · +256 783 953 940<br>Plot 10, Gulu City, Uganda</p>
+                </div>
             </div>
-            <div class="company-details">
-                <p>Plot 10, Gulu City, Uganda</p>
-                <p>support@aquapay.com</p>
-                <p>+256 783 953 940</p>
-            </div>
+            <div class="zigzag" aria-hidden="true"></div>
         </div>
-        <div class="receipt-info">
-            <p><strong>Receipt No:</strong> RCPT-<?php echo str_pad($row['token_id'], 6, "0", STR_PAD_LEFT); ?></p>
-            <p><strong>Date of Payment:</strong> <?php echo htmlspecialchars($row['payment_date']); ?></p>
-            <p><strong>Client Name:</strong> <?php echo htmlspecialchars($row['name']); ?></p>
-            <p><strong>Meter No:</strong> <?php echo htmlspecialchars($row['meter_no']); ?></p>
-            <p><strong>Address:</strong> <?php echo htmlspecialchars($row['address']); ?></p>
-        </div>
-        <table class="receipt-table">
-            <tr>
-                <th>Amount Paid</th>
-                <th>Token</th>
-                <th>Units</th>
-                <th>Issue Date</th>
-            </tr>
-            <tr>
-                <td>UGX <?php echo number_format($row['amount']); ?></td>
-                <td><?php echo htmlspecialchars($row['token_value']); ?></td>
-                <td><?php echo htmlspecialchars($row['units']); ?></td>
-                <td><?php echo htmlspecialchars($row['issue_date']); ?></td>
-            </tr>
-        </table>
+
         <div class="receipt-actions">
-            <button class="btn" onclick="window.print()">Print</button>
-            <!-- <button class="btn download" onclick="downloadPDF()">Download</button> -->
+            <button type="button" class="btn-receipt btn-print" onclick="window.print()">
+                <i class="fas fa-print"></i> Print receipt
+            </button>
+            <button type="button" class="btn-receipt btn-back" onclick="window.close(); history.back();">
+                <i class="fas fa-arrow-left"></i> Back
+            </button>
         </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- <script>
-        function downloadPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({
-                orientation: "portrait",
-                unit: "pt",
-                format: [550, 700]
-            });
-            doc.html(document.getElementById('receipt-content'), {
-                callback: function (pdf) {
-                    pdf.save('AquaPay_Receipt_<?php echo str_pad($row['token_id'], 6, "0", STR_PAD_LEFT); ?>.pdf');
-                },
-                x: 10,
-                y: 10,
-                html2canvas: { scale: 1 }
-            });
-        }
-    </script> -->
 </body>
 </html>
