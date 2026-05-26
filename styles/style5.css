@@ -252,7 +252,7 @@ html, body {
   flex: 1;
   margin-left: var(--sidebar-w);
   margin-top: var(--topbar-h);
-  padding: 28px;
+  padding: 28px 28px calc(var(--footer-h) + 40px);
   transition: margin-left 0.3s ease;
   background: var(--content-bg);
   min-height: calc(100vh - var(--topbar-h) - var(--footer-h));
@@ -519,14 +519,23 @@ table tbody tr:hover {
 /* ── Social icons ── */
 #contact-us a img { margin-top: 8px; width: 40px; transition: var(--transition); border-radius: 50%; }
 #contact-us a img:hover { transform: scale(1.12); filter: drop-shadow(0 4px 8px rgba(0,119,182,0.3)); }
-/* ═══════════════ FAQ ═══════════════ */
+/* ═══════════════ FAQ / Community ═══════════════ */
+.faq-wrapper {
+  margin-bottom: 24px;
+  scroll-margin-bottom: calc(var(--footer-h) + 24px);
+}
+
+.faq-wrapper .card-body {
+  padding: 16px 18px;
+}
+
 #faq-list {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   background: #f8fcff;
   padding: 16px;
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  max-height: 300px;
+  max-height: 360px;
   overflow-y: auto;
 }
 
@@ -596,6 +605,7 @@ table tbody tr:hover {
 .footer {
   position: fixed;
   bottom: 0;
+  left: var(--sidebar-w);
   background: var(--topbar-bg);
   text-align: center;
   padding: 0 10px;
@@ -603,7 +613,7 @@ table tbody tr:hover {
   line-height: var(--footer-h);
   font-size: 13px;
   color: rgba(255,255,255,0.55);
-  width: 100%;
+  width: calc(100% - var(--sidebar-w));
   z-index: 1000;
   border-top: 1px solid rgba(0,180,216,0.12);
 }
@@ -621,8 +631,14 @@ table tbody tr:hover {
   }
   .sidebar.show { transform: translateX(0); }
 
-  .main-container { margin-left: 0; padding: 20px 16px; }
-  .footer { margin-left: 0; }
+  .main-container {
+    margin-left: 0;
+    padding: 20px 16px calc(var(--footer-h) + 32px);
+  }
+  .footer {
+    left: 0;
+    width: 100%;
+  }
   .overlay.show { display: block; }
 
   .stats-grid,

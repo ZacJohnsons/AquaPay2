@@ -10,15 +10,15 @@ if (isset($_SESSION['client_id'])) {
     $user_type = 'admin';
 } else {
     http_response_code(403);
-    exit;
+    exit();
 }
 
-$query = "UPDATE thoughts_receivers 
+$query = 'UPDATE thoughts_receivers
           SET is_read = 1, read_at = NOW()
-          WHERE receiver_id = ? AND receiver_type = ? AND is_read = 0";
+          WHERE receiver_id = ? AND receiver_type = ? AND is_read = 0';
 $stmt = $conn->prepare($query);
-$stmt->bind_param("ss", $user_id, $user_type);
+$stmt->bind_param('ss', $user_id, $user_type);
 $stmt->execute();
+$stmt->close();
 
 http_response_code(200);
-?>

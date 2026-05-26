@@ -9,6 +9,8 @@ if(!isset($_SESSION['loggedInUser']) || !isset($_SESSION['client_id'])) {
 
 $loggedInUser = $_SESSION['loggedInUser'];
 $user_id = $_SESSION['client_id'];
+$user_type = 'client';
+require_once 'includes/thought_helpers.php';
 
 // Fetch user information (name, email & profile image) using client_id
 $queryUser = "SELECT client_id, name, meter_no, status, email, profile_image, address FROM client_information WHERE client_id = '$user_id'";
@@ -172,9 +174,6 @@ if (isset($_GET['popup'])) {
             margin-bottom: 8px;
         }
 
-        .faq-wrapper { margin-bottom: 20px; }
-        .faq-wrapper .card-body { padding: 14px 18px; }
-
         @media (max-width: 1100px) {
             .stats-grid,
             .charts-grid {
@@ -204,10 +203,7 @@ if (isset($_GET['popup'])) {
                     <?php
                         // Determine user identity for notification check
                         if (isset($_SESSION['client_id'])) {
-                            $user_id = $_SESSION['client_id'];
-                            $user_type = 'client';
-
-                            // Fetch unread count for this specific user from thoughts_receiver
+                            // Fetch unread count for this specific user from thoughts_receivers
                             $countQuery = "SELECT COUNT(*) AS count 
                                         FROM thoughts_receivers 
                                         WHERE receiver_id = '$user_id' 
@@ -265,7 +261,8 @@ if (isset($_GET['popup'])) {
                 <a class="nav-link" href="#"><i class="fas fa-question-circle me-2"></i> Contact Us</a>
                 <ul class="dropdown-content list-unstyled ps-3">
                     <li><a class="nav-link" href="#" id="view-contact"><i class="fas fa-envelope me-2"></i> Contact us</a></li>
-                    <li><a class="nav-link" href="#" id="view-faq"><i class="fas fa-question me-2"></i> FAQ</a></li>
+                    <li><a class="nav-link" href="#" id="view-community"><i class="fas fa-comments me-2"></i> Community</a></li>
+                    <li><a class="nav-link" href="#" id="view-faq"><i class="fas fa-info-circle me-2"></i> About AquaPay</a></li>
                 </ul>
             </li>
         </ul>
@@ -338,86 +335,7 @@ if (isset($_GET['popup'])) {
                             <div class="card-body text-start">
                                 <h2 class="mt-3 text-center">Community Thoughts & FAQs</h2>
                                 <ul id="faq-list" style="list-style:none; padding:0;">
-                                    <?php
-                                    $thoughts = mysqli_query($conn, "
-                                        SELECT t.*, 
-                                            (SELECT COUNT(*) FROM thought_likes WHERE thought_id = t.id) AS likes,
-                                            (SELECT profile_image FROM client_information WHERE client_id = t.sender_id LIMIT 1) AS client_profile,
-                                            (SELECT profile_image FROM admin_users WHERE admin_id = t.sender_id LIMIT 1) AS admin_profile,
-                                            tr.is_read
-                                        FROM thoughts t
-                                        JOIN thoughts_receivers tr ON tr.thought_id = t.id
-                                        WHERE tr.receiver_id = '$user_id' AND tr.receiver_type = '$user_type'
-
-                                        UNION
-
-                                        SELECT t.*, 
-                                            (SELECT COUNT(*) FROM thought_likes WHERE thought_id = t.id) AS likes,
-                                            (SELECT profile_image FROM client_information WHERE client_id = t.sender_id LIMIT 1) AS client_profile,
-                                            (SELECT profile_image FROM admin_users WHERE admin_id = t.sender_id LIMIT 1) AS admin_profile,
-                                            NULL AS is_read
-                                        FROM thoughts t
-                                        WHERE t.sender_id = '$user_id' AND t.sender_type = '$user_type'
-
-                                        ORDER BY created_at DESC
-                                    ");
-
-                                    while ($row = mysqli_fetch_assoc($thoughts)) {
-                                        $profileImage = !empty($row['client_profile']) ? $row['client_profile'] : (!empty($row['admin_profile']) ? $row['admin_profile'] : 'default.png');
-                                        echo '<li class="thought-card" style="border-bottom:1px solid #eee; margin-bottom:14px; padding-bottom:10px;">';
-                                        echo '<div style="display:flex;align-items:flex-start;position:relative;">';
-                                        // Profile image
-                                        echo '<img src="' . htmlspecialchars($profileImage) . '" alt="Profile" style="width:38px;height:38px;border-radius:50%;margin-right:10px;">';
-                                        // Name and text
-                                        echo '<div style="flex:1;">';
-                                        echo '<span style="font-weight:600;vertical-align:middle;">' . htmlspecialchars($row['username']) . '</span>';
-                                        echo '<div style="margin:2px 0 0 0;">' . nl2br(htmlspecialchars($row['content'])) . '</div>';
-                                        echo '</div>';
-                                        // Date on the extreme right
-                                        echo '<div style="position:absolute;top:0;right:0;font-size:13px;color:#888;">' . date('M d, Y H:i', strtotime($row['created_at'])) . '</div>';
-                                        echo '</div>';
-                                        // Like and comment icons (left aligned)
-                                        echo '<div style="margin-left:48px;margin-top:4px;text-align:left;">';
-                                        echo '<form method="POST" action="includes/like_thought.php" style="display:inline;">
-                                                <input type="hidden" name="thought_id" value="' . $row['id'] . '">
-                                                <button type="submit" style="border:none;background:none;color:#007bff;cursor:pointer;padding-right:6px;">
-                                                    <i class="fas fa-thumbs-up"></i>
-                                                    <span style="font-size:12px; color:#000;">' . $row['likes'] . '</span>
-                                                </button>
-                                            </form>';
-                                        echo '<button type="button" class="comment-toggle-btn" style="border:none;background:none;color:#007bff;cursor:pointer;padding-left:2px;" onclick="toggleCommentBox(' . $row['id'] . ')">
-                                                <i class="fas fa-comment"></i>
-                                            </button>';
-                                        echo '</div>';
-                                        // Comments
-                                        $comments = mysqli_query($conn, "SELECT * FROM thought_comments WHERE thought_id = {$row['id']} ORDER BY created_at ASC");
-                                        echo '<div style="margin-left:48px;margin-top:6px;">';
-                                        while ($c = mysqli_fetch_assoc($comments)) {
-                                            echo '<div style="display:flex;align-items:center;margin-bottom:4px;">';
-                                            echo '<div style="border-radius:8px;padding:4px 10px;">';
-                                            echo '<strong>' . htmlspecialchars($c['username']) . ':</strong> ' . htmlspecialchars($c['comment']);
-                                            echo '<span style="font-size:11px; color:#aaa; margin-left:8px;">' . date('M d, H:i', strtotime($c['created_at'])) . '</span>';
-                                            echo '</div></div>';
-                                        }
-                                        // Hidden comment box
-                                        echo '<div id="comment-box-' . $row['id'] . '" style="display:none;margin-top:6px;">';
-                                        echo '<form method="POST" action="includes/comment_thought.php" style="position:relative;">';
-                                        echo '<input type="hidden" name="thought_id" value="' . $row['id'] . '">';
-
-                                        echo '<input type="text" name="comment" placeholder="Add a comment..." required 
-                                                style="width:100%; padding:6px 36px 6px 10px; border-radius:4px; border:1px solid #ccc;">';
-
-                                        echo '<button type="submit" style="position:absolute;top:50%;right:6px;transform:translateY(-50%);background:none;border:none;color:#007bff;font-size:16px;cursor:pointer;strong: 20px;
-                                            ">
-                                            <i class="fas fa-arrow-up"></i>
-                                        </button>';
-
-                                        echo '</form>';
-                                        echo '</div>';
-                                        echo '</div>';
-                                        echo '</li>';
-                                    }
-                                    ?>
+                                    <?php renderThoughtFeed($conn, $user_id, $user_type); ?>
                                 </ul>
                                 <form action="includes/post_thought.php" method="POST" class="mt-3" style="position:relative;">
                                     <textarea name="content" class="form-control mb-2" placeholder="Share your thought or ask a question..." required
@@ -812,10 +730,17 @@ if (isset($_GET['popup'])) {
                 toggleSections("contact-us");
             });
 
+            document.getElementById("view-community").addEventListener("click", function (e) {
+                e.preventDefault();
+                dashboardOverview.style.display = "block";
+                sections.forEach(section => section.style.display = "none");
+                document.getElementById("faq").scrollIntoView({ behavior: "smooth" });
+            });
+
             document.getElementById("view-faq").addEventListener("click", function (e) {
                 e.preventDefault();
                 toggleSections("faq1");
-            });  
+            });
             
             // Profile section under profile dropdown
             document.getElementById("my-profile").addEventListener("click", function (e) {
