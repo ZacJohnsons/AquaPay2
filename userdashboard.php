@@ -33,6 +33,12 @@ if ($resultUser && mysqli_num_rows($resultUser) > 0) {
     $status = "Unknown";
 }
 
+// Meter state should drive Active/Inactive status
+$normalizedMeterStatus = strtolower(trim((string)$status));
+$meterIsActive = in_array($normalizedMeterStatus, ['active', 'working', 'connected', 'online'], true);
+$accountStatus = $meterIsActive ? 'Active' : 'Inactive';
+$statusColor = $meterIsActive ? 'success' : 'danger';
+
 // Fetch total transactions (payments made by this user)
 $totalTransactions = mysqli_fetch_assoc(
     mysqli_query($conn, "SELECT COUNT(*) as count FROM payments WHERE client_id = '$user_id'")
@@ -115,6 +121,73 @@ if (isset($_GET['popup'])) {
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css">
 
+    <style>
+        .dash-header { margin-bottom: 16px; }
+        .dash-welcome { font-size: 14px; color: #344055; margin: 0 0 2px; }
+        .dash-welcome strong { color: #023e8a; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            margin: 0 !important;
+            border-top: 4px solid #0096c7;
+            min-height: 140px;
+        }
+        .stat-card .card-body {
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 132px;
+        }
+        .stats-grid .stat-card:nth-child(2) { border-top-color: #00b4d8; }
+        .stats-grid .stat-card:nth-child(3) { border-top-color: #48cae4; }
+        .stats-grid .stat-card:nth-child(4) { border-top-color: #90e0ef; }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+        .chart-card {
+            margin: 0;
+            border-top: 4px solid #0077b6;
+            min-height: 320px;
+        }
+        .chart-card .card-body {
+            padding: 12px 14px;
+            min-height: 312px;
+        }
+        .charts-grid .chart-card:nth-child(2) { border-top-color: #00b4d8; }
+        .chart-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #0077b6;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 8px;
+        }
+
+        .faq-wrapper { margin-bottom: 20px; }
+        .faq-wrapper .card-body { padding: 14px 18px; }
+
+        @media (max-width: 1100px) {
+            .stats-grid,
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-card,
+            .chart-card {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Topbar -->
@@ -202,35 +275,16 @@ if (isset($_GET['popup'])) {
 
     <!-- Main Container -->
     <div class="main-container" id="main-container">
-        <div class="hero-section text-dark" style="background: #d5d9deff; min-height: 100vh; padding-top: 40px;">
+        <div class="hero-section text-dark">
             <div class="container">
-                <div class="row align-items-center mb-4">
-                    
-                    <div class="col-md-6">
-                        <h4 style="font-weight:600;">Hello, <?php echo htmlspecialchars($loggedInUser); ?> Welcome Back !</h4>
-                    </div>
-                   
-                    <div class="col-md-6 text-end">
-                        <?php
-                            // Example: $units = ...; $status = ...;
-                            $accountStatus = ($status === 'active' && $units > 0) ? 'Active' : 'Inactive';
-                            $statusColor = ($accountStatus === 'Active') ? 'success' : 'danger';
-                        ?>
-                        <span class="badge bg-<?php echo $statusColor; ?>" style="font-size:1rem;">
-                            <?php echo $accountStatus; ?>
-                        </span>
-                    </div>
+                <div class="dash-header">
+                    <p class="dash-welcome">Hello, welcome back <strong><?php echo htmlspecialchars($loggedInUser); ?></strong>!</p>
+                    <h1>Dashboard Overview</h1>
+                    <p class="lead mb-2">Manage your water bills, tokens, and account activity in one place.</p>
                 </div>
-        
-                <div class="row mb-3">
-                    <div class="col-12">
-                        <h1 class="display-5 mb-2" style="font-weight:700;">Welcome to AquaPay</h1>
-                        <p class="lead mb-2" style="font-size:1.1rem;">Manage your water bills easily and securely from anywhere, anytime.</p>
-                    </div>
-                </div>
-        
-                <div class="dashboard-cards d-flex justify-content-center align-items-center mb-4" style="gap: 32px;">
-                    <div class="card shadow-sm dashboard-card">
+
+                <div class="stats-grid">
+                    <div class="card stat-card">
                         <div class="card-body text-center">
                             <h6 class="card-title">Transactions</h6>
                             <p class="card-text display-6">
@@ -238,7 +292,7 @@ if (isset($_GET['popup'])) {
                             </p>
                         </div>
                     </div>
-                    <div class="card shadow-sm dashboard-card">
+                    <div class="card stat-card">
                         <div class="card-body text-center">
                             <h6 class="card-title">Receipts</h6>
                             <p class="card-text display-6">
@@ -246,7 +300,7 @@ if (isset($_GET['popup'])) {
                             </p>
                         </div>
                     </div>
-                    <div class="card shadow-sm dashboard-card">
+                    <div class="card stat-card">
                         <div class="card-body text-center">
                             <h6 class="card-title">Total Amount</h6>
                             <p class="card-text display-6">
@@ -254,44 +308,34 @@ if (isset($_GET['popup'])) {
                             </p>
                         </div>
                     </div>
-                    <div class="card shadow-sm dashboard-card">
+                    <div class="card stat-card">
                         <div class="card-body text-center">
                             <h6 class="card-title">Meter Status</h6>
-                            <?php
-                                $accountStatus = ($status === 'active' && $units > 0) ? 'Active' : 'Inactive';
-                                $statusColor = ($accountStatus === 'Active') ? 'success' : 'danger';
-                            ?>
                             <span class="badge bg-<?php echo $statusColor; ?>" style="font-size:1.1rem;">
                                 <?php echo $accountStatus; ?>
                             </span>
                         </div>
                     </div>
                 </div>
-        
-                <!-- Charts: Pie and Bar -->
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="card shadow-sm">
-                            <div class="card-body">
-                                <h6 class="card-title">Transactions Overview</h6>
+
+                <div class="charts-grid">
+                    <div class="card chart-card">
+                        <div class="card-body">
+                            <p class="chart-label">Overview (Pie)</p>
                                 <canvas id="transactionsPieChart" height="180"></canvas>
-                            </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card shadow-sm">
-                            <div class="card-body">
-                                <h6 class="card-title">Receipts Overview</h6>
+                    <div class="card chart-card">
+                        <div class="card-body">
+                            <p class="chart-label">Overview (Bar)</p>
                                 <canvas id="receiptsBarChart" height="180"></canvas>
-                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- FAQ Section -->
-                <div id="faq" class="row mb-4 justify-content-center">
-                    <div class="col-lg-12 col-md-12">
-                        <div class="card shadow-sm">
+                <div id="faq" class="faq-wrapper">
+                    <div class="card">
                             <div class="card-body text-start">
                                 <h2 class="mt-3 text-center">Community Thoughts & FAQs</h2>
                                 <ul id="faq-list" style="list-style:none; padding:0;">
@@ -388,7 +432,6 @@ if (isset($_GET['popup'])) {
                                 </form>
                             </div>
                         </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -436,9 +479,7 @@ if (isset($_GET['popup'])) {
                                         }
                                 ?>
                                 <input type="file" id="profile_image-input" style="display: none;" accept="image/*">
-                                <button class="btn btn-success mt-2" id="upload-profile_image">Upload</button>
-                                <button class="btn btn-danger mt-2" id="delete-profile_image">Delete</button>
-                            </div>
+                                <button class="btn btn-success mt-2" id="upload-profile_image">Upload</button>                            </div>
                         </div>
                         <!-- Update Information Section -->
                         <div id="update-info-section" class="section-content" style="display: none;">
@@ -647,7 +688,9 @@ if (isset($_GET['popup'])) {
                 labels: ['Payments', 'Receipts'],
                 datasets: [{
                     data: [<?php echo $totalTransactions ?? 0; ?>, <?php echo $totalReceipts ?? 0; ?>],
-                    backgroundColor: ['#007bff', '#28a745']
+                    backgroundColor: ['rgba(0, 123, 255, 0.35)', 'rgba(40, 167, 69, 0.35)'],
+                    borderColor: ['rgba(0, 123, 255, 0.65)', 'rgba(40, 167, 69, 0.65)'],
+                    borderWidth: 1
                 }]
             },
             options: {
@@ -666,7 +709,10 @@ if (isset($_GET['popup'])) {
                 datasets: [{
                     label: 'Count',
                     data: [<?php echo $totalTransactions ?? 0; ?>, <?php echo $totalReceipts ?? 0; ?>],
-                    backgroundColor: ['#007bff', '#28a745']
+                    backgroundColor: ['rgba(0, 123, 255, 0.3)', 'rgba(40, 167, 69, 0.3)'],
+                    borderColor: ['rgba(0, 123, 255, 0.55)', 'rgba(40, 167, 69, 0.55)'],
+                    borderWidth: 1,
+                    borderRadius: 8
                 }]
             },
             options: {
@@ -735,7 +781,7 @@ if (isset($_GET['popup'])) {
             // Show Dashboard when dashboard link is clicked
             document.querySelector(".nav-link[href='code.php']").addEventListener("click", function (e) {
                 e.preventDefault();
-                dashboardOverview.style.display = "flex";
+                dashboardOverview.style.display = "block";
                 sections.forEach(section => section.style.display = "none");
             });
 
