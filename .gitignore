@@ -1,0 +1,22 @@
+# Local secrets (copy from *.example.php after clone)
+includes/config.php
+includes/db.php
+includes/mail_config.php
+
+# Ignore uploads or generated files
+uploads/
+*.log
+*.tmp
+*.bak
+
+# Ignore dependencies
+vendor/
+node_modules/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore IDE/editor stuff
+.vscode/
+.idea/

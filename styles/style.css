@@ -1,0 +1,50 @@
+/* ========================================
+   AquaPay - style.css (Section sticky bars)
+   ======================================== */
+
+:root {
+  --aqua-primary:  #00b4d8;
+  --aqua-deep:     #0077b6;
+  --aqua-dark:     #023e8a;
+  --border-subtle: #d6eaf5;
+  --transition:    all 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+
+#clients-section .d-flex,
+#admins-section .d-flex {
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  z-index: 10;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 0;
+  gap: 8px;
+}
+
+#payments-section .d-flex,
+#tokens-section .d-flex {
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  z-index: 10;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 8px;
+}
+
+/* search inputs inside bars */
+#clients-section .d-flex .form-control,
+#admins-section .d-flex .form-control,
+#payments-section .d-flex .form-control,
+#tokens-section .d-flex .form-control {
+  height: 36px;
+  font-size: 13px;
+}
+
+/* search icon button */
+.btn-link {
+  color: var(--aqua-deep);
+  padding: 4px 8px;
+}
+.btn-link:hover { color: var(--aqua-dark); }
