@@ -48,7 +48,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $response = curl_exec($ch);
 
     if (curl_errno($ch)) {
-        die("Curl error: " . curl_error($ch));
+        // die("Curl error: " . curl_error($ch));
     }
 
     curl_close($ch);
@@ -56,7 +56,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $result = json_decode($response, true);
 
 
-    die(var_dump($response));
+    // die(var_dump($response));
 
      if ($result && isset($result['status']) && $result['status'] == "success") {
         // Save payment

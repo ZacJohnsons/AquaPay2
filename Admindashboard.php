@@ -74,7 +74,7 @@ $adminsResult = mysqli_query($conn, $adminsQuery);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AquaPay Dashboard</title>
     <!-- favicon -->
-    <link rel="icon" type="image/png" href="images/icon.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="images/icon.png">
     <!-- Bootstrap CSS (Include in <head>) -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <!--Styling-->
@@ -575,9 +575,7 @@ $adminsResult = mysqli_query($conn, $adminsQuery);
                                         }
                                     ?>
                                     <input type="file" id="profile_image-input" style="display: none;" accept="image/*">
-                                    <button class="btn btn-success mt-2" id="upload-profile_image">Upload</button>
-                                    <button class="btn btn-danger mt-2" id="delete-profile_image">Delete</button>
-                                </div>
+                                    <button class="btn btn-success mt-2" id="upload-profile_image">Upload</button>                                </div>
                             </div>
                             <!-- Update Information Section -->
                             <div id="update-info-section" class="section-content" style="display: none;">
