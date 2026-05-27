@@ -323,7 +323,7 @@ html, body {
 
 .dashboard-card .card-body { padding: 26px 18px; }
 
-/* ── Generic cards ── */
+
 .card {
   background: var(--card-bg);
   border: 1px solid var(--border-subtle);

@@ -136,7 +136,7 @@ if (isset($_GET['popup'])) {
         .stat-card {
             margin: 0 !important;
             border-top: 4px solid #0096c7;
-            min-height: 140px;
+            min-height: 50px;
         }
         .stat-card .card-body {
             padding: 14px 16px;
@@ -318,13 +318,13 @@ if (isset($_GET['popup'])) {
                     <div class="card chart-card">
                         <div class="card-body">
                             <p class="chart-label">Overview (Pie)</p>
-                                <canvas id="transactionsPieChart" height="180"></canvas>
+                                <canvas id="transactionsPieChart" height="220"></canvas>
                         </div>
                     </div>
                     <div class="card chart-card">
                         <div class="card-body">
                             <p class="chart-label">Overview (Bar)</p>
-                                <canvas id="receiptsBarChart" height="180"></canvas>
+                                <canvas id="receiptsBarChart" height="220"></canvas>
                         </div>
                     </div>
                 </div>
