@@ -5,7 +5,7 @@ include 'includes/db.php'; // Database connection
 if (!isset($_SESSION['loggedInUser']) || !isset($_SESSION['admin_id'])) {
     header("Location: AdminLogin.php");
     exit();
-}
+} 
 
 // Device Restriction (block mobile/tablet access)
 $userAgent = $_SERVER['HTTP_USER_AGENT'];
